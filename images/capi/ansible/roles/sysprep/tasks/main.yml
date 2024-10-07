@@ -163,6 +163,21 @@
     mode: "0644"
   when: ansible_os_family == "Debian" and kubevirt == "true"
 
+# Armada systemd-networkd Routing and Routing Policy Configuration
+- name: Find networkd.conf file
+  ansible.builtin.stat:
+    path: /etc/systemd/networkd.conf
+  register: systemd_networkd_files
+
+- name: Set ManageForeignRoutingPolicyRules=no and ManageForeignRoutes=no
+  ansible.builtin.copy:
+    src: files/etc/systemd/networkd.conf
+    dest: /etc/systemd/networkd.conf
+    owner: systemd-network
+    group: systemd-network
+    mode: "0644"
+  when: systemd_networkd_files.stat.islnk is defined
+
 - name: Find SSH host keys
   ansible.builtin.find:
     path: /etc/ssh
@@ -261,3 +276,4 @@
     name: ssh
     enabled: true
   when: ansible_os_family == "Debian"
+
