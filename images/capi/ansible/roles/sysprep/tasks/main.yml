@@ -277,3 +277,18 @@
     enabled: true
   when: ansible_os_family == "Debian"
 
+- name: Harden network parameters
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/01-armada.conf
+  loop:
+    - name: net.ipv4.tcp_syncookies
+      value: 1
+    - name: net.ipv4.conf.default.log_martians
+      value: 1
+    - name: net.ipv4.conf.all.log_martians
+      value: 1
