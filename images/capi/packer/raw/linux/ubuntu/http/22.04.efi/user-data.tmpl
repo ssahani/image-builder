@@ -43,7 +43,7 @@ autoinstall:
       type: disk
       id: disk-sda
     - device: disk-sda
-      size: 536870912
+      size: 512M  # EFI partition
       wipe: superblock
       flag: boot
       number: 1
@@ -51,13 +51,14 @@ autoinstall:
       grub_device: true
       type: partition
       id: partition-0
+      typecode: EF00  # EFI System Partition
     - fstype: fat32
       volume: partition-0
       preserve: false
       type: format
       id: format-0
     - device: disk-sda
-      size: -1
+      size: 512M  # Boot partition (reduced from 1G, adjust if needed)
       wipe: superblock
       flag: ''
       number: 2
@@ -70,14 +71,32 @@ autoinstall:
       preserve: false
       type: format
       id: format-1
+    - device: disk-sda
+      size: -1  # Root partition (remaining space)
+      wipe: superblock
+      flag: ''
+      number: 3
+      preserve: false
+      grub_device: false
+      type: partition
+      id: partition-2
+    - fstype: ext4
+      volume: partition-2
+      preserve: false
+      type: format
+      id: format-2
     - path: /
+      device: format-2
+      type: mount
+      id: mount-root
+    - path: /boot
       device: format-1
       type: mount
-      id: mount-1
+      id: mount-boot
     - path: /boot/efi
       device: format-0
       type: mount
-      id: mount-0
+      id: mount-efi
   apt:
     fallback: offline-install
   updates: 'all'
