@@ -17,7 +17,7 @@ set -euo pipefail
 #   - Validation of output file path and overwrite protection.
 #   - Detailed logging with color output (optional).
 #   - Support for custom LUKS cipher and key size.
-#   - Robust EFI partition validation using parted and blkid.
+#   - Robust EFI partition validation with partition type check.
 #
 # Usage:
 #   export LUKS_PASSWORD='your_secure_password'
@@ -78,7 +78,7 @@ check_and_install() {
         }
     fi
 }
-for dep in jq:jq qemu-img:qemu-utils cryptsetup:cryptsetup expect:expect partx:util-linux kpartx:kpartx blkid:util-linux parted:parted; do
+for dep in jq:jq qemu-img:qemu-utils cryptsetup:cryptsetup expect:expect partx:util-linux kpartx:kpartx blkid:util-linux parted:parted fdisk:util-linux; do
     check_and_install "${dep%%:*}" "${dep##*:}"
 done
 
@@ -116,14 +116,21 @@ ROOT_PART="${LOOP_INPUT}p3"
 for part in "$EFI_PART" "$BOOT_PART" "$ROOT_PART"; do
     [[ -e "$part" ]] || { error "Missing partition $part"; exit 1; }
 done
-# Check EFI partition is FAT32 using parted and blkid
+# Check EFI partition type and filesystem
+EFI_PART_TYPE=$(sudo fdisk -l "$LOOP_INPUT" | grep "^${EFI_PART}" | awk '{print $5,$6,$7}' | grep -i "EFI System")
+if [[ -z "$EFI_PART_TYPE" ]]; then
+    EFI_PART_TYPE=$(sudo fdisk -l "$LOOP_INPUT" | grep "^${EFI_PART}" | awk '{print $5,$6,$7}')
+    warn "EFI partition type is not EFI System (found: $EFI_PART_TYPE); proceeding, but may not be UEFI-compatible"
+else
+    log "EFI partition confirmed as EFI System type"
+fi
 EFI_FSTYPE=$(sudo parted -s "$LOOP_INPUT" print | grep "^ 1" | awk '{print $5}')
 if [[ "$EFI_FSTYPE" != "fat32" ]]; then
     error "EFI partition is not fat32 (parted reports: $EFI_FSTYPE)"; exit 1
 fi
 BLKID_FSTYPE=$(sudo blkid -s TYPE -o value "$EFI_PART" 2>/dev/null || echo "")
 if [[ "$BLKID_FSTYPE" != "vfat" ]]; then
-    warn "blkid did not detect vfat for EFI partition, but parted confirms fat32; proceeding"
+    warn "blkid did not detect vfat for EFI partition (found: $BLKID_FSTYPE), but parted confirms fat32; proceeding"
 else
     log "EFI partition confirmed as vfat by blkid"
 fi
@@ -174,6 +181,8 @@ ROOT_END=$((ROOT_START + (ROOT_SIZE + LUKS_HEADER_SIZE) / SECTOR_SIZE - 1))
 
 sudo parted -s "$LOOP_OUTPUT" -- mklabel gpt \
     mkpart EFI fat32 ${EFI_START}s ${EFI_END}s \
+    set 1 esp on \
+    set 1 boot on \
     mkpart boot ext4 ${BOOT_START}s ${BOOT_END}s \
     mkpart root ext4 ${ROOT_START}s ${ROOT_END}s || { error "Failed to create partition table"; exit 1; }
 sudo partx -u "$LOOP_OUTPUT" || { error "Failed to update partition table for output"; exit 1; }
