@@ -8,6 +8,7 @@ aliases:
     - mboersma
     - drew-viles
   image-builder-reviewers:
+    - AndiDog
     - randomvariable
   image-builder-azure-reviewers:
     - jsturtevant
@@ -22,8 +23,7 @@ aliases:
   image-builder-scaleway-reviewers:
     - Tomy2e
     - Mia-Cross
-    # TODO: Add once added to kubernetes-sigs org
-    # - remyleone
+    - remyleone
   image-builder-raw-maintainers:
     - detiber
     - thebsdbox
@@ -49,8 +49,10 @@ aliases:
     - mboersma
   cluster-api-gcp-maintainers:
     - cpanato
+    - damdo
     - dims
     - richardcase
+    - salasberryfin
   cluster-api-digitalocean-maintainers:
     - cpanato
     - gottwald
